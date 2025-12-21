@@ -1,54 +1,54 @@
-name: CI (Gradle)
+name: PR Workflow
 
 on:
   pull_request:
-    branches: [ "main", "master" ]
-    types: [ opened, synchronize, reopened ]
-  push:
-    branches: [ "main", "master" ]
+    branches:
+      - master
+    types:
+      - opened
+      - synchronize
+      - reopened
   workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: pr-workflow-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  build-test:
-    name: Build & Test (JDK 17)
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Valida o gradle wrapper (boa prática de segurança)
       - name: Validate Gradle Wrapper
         uses: gradle/wrapper-validation-action@v2
 
-      - name: Set up JDK 17 (Temurin)
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
           cache: gradle
 
-      # Cache + boas configs do Gradle no CI
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant execute permission for gradle
+        run: chmod +x gradlew
 
       - name: Show versions
         run: |
           java -version
           ./gradlew --version
 
-      # Build e testes
-      - name: Build
+      - name: Build with Gradle
         run: ./gradlew clean build --no-daemon
 
-      # Sempre sobe relatórios de teste, mesmo se o build falhar
       - name: Upload Test Reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -60,7 +60,6 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      # Sobe o(s) jar(s) gerados (ajuda a baixar o artifact do PR/commit)
       - name: Upload Build Artifacts (JAR)
         if: success()
         uses: actions/upload-artifact@v4
